@@ -26,12 +26,25 @@ class Ensemble:
         self.tokenizer = None
         self.n_folds = n_folds
         self.skfold = KFold(n_splits = n_folds, shuffle=True, random_state=1)
+        self.raw_avg = None
+        self.weight_sum = 0
         
-    def add(self, name, model, uses_one_hot=True, uses_categorical=False, uses_argmax=False):
+    def add(self, name, model, weight=None, uses_one_hot=True, uses_categorical=False, uses_argmax=False):
+        if self.raw_avg == None:
+            if weight == None:
+                self.raw_avg = True
+            else:
+                self.raw_avg = False
+        else:
+            if (self.raw_avg and weight != None):
+                raise ValueError("Ensembled configured to not use weights but received weight value!")
+            if (not self.raw_avg and weight == None):
+                raise ValueError("Ensembled configured to use weights and current weight is None!")
         if name in self.models:
             raise ValueError("Ensemble already has a model named " + name)
+        self.weight_sum += weight
         for n in range(self.n_folds):
-            self.models[n][name] = {'model':model, 'model_one_hot':uses_one_hot, 'model_categorical':uses_categorical, 'model_argmax':uses_argmax, 'last_predicts':[]}
+            self.models[n][name] = {'model':model, 'model_one_hot':uses_one_hot, 'model_categorical':uses_categorical, 'model_argmax':uses_argmax, 'last_predicts':[], 'weight':weight}
         
     def set_datasets(self, x, y, indexes):
         self.datasets['original']['x'] = x
@@ -45,11 +58,6 @@ class Ensemble:
             raise RuntimeError("Tokenizer is not configured - use Ensemble.set_tokenizer(new_tokenizer)")
         if self.encoder == None:
             raise RuntimeError("Encoder is not configured - use Ensemble.set_encoder(new_encoder)")
-            
-        #_x = []
-        #for element in self.datasets['original']['x']:
-        #    print("Phrase = " + element + " - tokenized = " + str(self.tokenizer.texts_to_sequences([element])[0]))
-        #    _x.append(self.tokenizer.texts_to_sequences([element])[0])
         
         if purge_duplicates:
             _x = self.tokenizer.texts_to_sequences(self.datasets['original']['x'])[:]
@@ -84,62 +92,10 @@ class Ensemble:
             self.links[n]['train'] = train_indexes[:]
             self.links[n]['test']  = test_indexes[:]
             n += 1
-        #for n in range(self.n_folds):
-        #    self.datasets['split'][n]['train']['x'] = [_x[v] for v in skfind[n][0]]
-        #    self.datasets['split'][n]['train']['y'] = [_y[v] for v in skfind[n][0]]
-        #    self.datasets['split'][n]['train']['i'] = [_i[v] for v in skfind[n][0]]
-        #    self.datasets['split'][n]['test']['x'] = [_x[v] for v in skfind[n][1]]
-        #    self.datasets['split'][n]['test']['y'] = [_y[v] for v in skfind[n][1]]
-        #    self.datasets['split'][n]['test']['i'] = [_i[v] for v in skfind[n][1]]
-        
-        #if shuffle_seed != None:
-        #    random.seed(shuffle_seed)
-        #    random.shuffle(_x)
-        #    random.seed(shuffle_seed)
-        #    random.shuffle(_y)
-        #    random.seed(shuffle_seed)
-        #    random.shuffle(_i)
-        #cutoff = int(len(_x)/self.n_folds)
-        #for n in range(self.n_folds):
-        #    print("Splitting {}-th fold".format(n + 1))
-        #    self.datasets['split'][n]['train']['x'] = _x[cutoff:]
-        #    self.datasets['split'][n]['train']['y'] = _y[cutoff:]
-        #    self.datasets['split'][n]['train']['i'] = _i[cutoff:]
-        #    self.datasets['split'][n]['test']['x']  = _x[:cutoff]
-        #    self.datasets['split'][n]['test']['y']  = _y[:cutoff]
-        #    self.datasets['split'][n]['test']['i']  = _i[:cutoff]
-        #    _x = _x[cutoff:] + _x[:cutoff] #Rotating the 
-        #    _y = _y[cutoff:] + _y[:cutoff] #lists for splitting
-        #    _i = _i[cutoff:] + _i[:cutoff]
-        #    #print("New _y = " + str(_y[:10]))
-        ##for n in range(self.n_folds):
-        ##    print("y test = " + str(self.datasets['split'][n]['test']['y'][:10]))
         
     def get_string_from_tokenizer(self, vec):
         return dict(map(vec, self.tokenizer.word_index.items()))
-    
-    def test_split(self):
-        for n in range(self.n_folds):
-            _x_tr = self.datasets['split'][n]['train']['x']
-            _x_ts = self.datasets['split'][n]['test']['x']
-            #_y_tr = self.datasets['split'][n]['train']['y']
-            #_y_ts = self.datasets['split'][n]['test']['y']
-            
-            #for index_ts, entry_ts in enumerate(_x_ts):
-            #    for index_tr, entry_tr in enumerate(_x_tr):
-            #        if entry_ts == entry_tr:
-                        #raise ValueError("Test failed on {}-th fold\nMatching entry = ".format(n) + str(entry_tr) + "\nPhrase = " + str(self.tokenizer.sequences_to_texts([entry_tr])[0]) + "Entry_tr = {}\nEntry_tr_map = {}\nEntry_ts = {}\nEntry_ts_map = {}".format(index_tr, self.datasets['split'][n]['train']['i'][index_tr], index
-                        #_ts, self.datasets['split'][n]['test']['i'][index_ts]))
-                #if entry in _x_tr:
-                #    raise ValueError("Test failed on {}-th fold\nMatching entry = ".format(n) + str(entry) + "\nPhrase = " + str(self.tokenizer.sequences_to_texts([entry])[0]) + "\nOriginal index = " + str()
-                    
-            #for entry in _x_tr:
-            #    if entry in _x_ts:
-            #        raise ValueError("Test failed on {}-th fold\nMatching entry = ".format(n) + str(entry) + "\nPhrase = " + str(self.tokenizer.sequences_to_texts([entry])[0]))
-                    
-            print("{}-th fold checks out!".format(n+1))
         
-    
     def test_sets(self, ignore_collisions=True):
         print("Testing datasets for discrepancies...")
         for n in range(self.n_folds):
@@ -214,9 +170,10 @@ class Ensemble:
             _y_categorical = np_utils.to_categorical(self.datasets['split'][n]['train']['y'])
             
             for _m_key, _m_model in self.models[n].items():
-                print("\tTraining model " + _m_key)
                 if profiler is not None:
                     profiler.add_milestone("Fold {} - Training model {}".format(n + 1, _m_key))
+                else:
+                    print("\tTraining model " + _m_key)
                     
                 if _m_model['model_one_hot']:
                     _x = _x_one_hot
@@ -252,9 +209,10 @@ class Ensemble:
             _x_orig = sequence.pad_sequences(np.array(self.datasets['split'][n]['test']['x']), maxlen=maxlen)
             
             for _m_key, _m_model in self.models[n].items():
-                print("\tEvaluating model " + _m_key)
                 if profiler is not None:
                     profiler.add_milestone("Fold {} - Testing model {}".format(n + 1, _m_key))
+                else:
+                    print("\tTesting model " + _m_key)
                     
                 if _m_model['model_one_hot']:
                     _x = _x_one_hot
