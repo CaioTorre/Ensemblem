@@ -49,7 +49,7 @@ from sklearn.preprocessing import LabelEncoder
 import timeit
 
 class RNC_vin:
-    def __init__(self, max_features=100, embedding_dims=50, maxlen=50, filters=100, kernel_size=3, hidden_dims=250, output_dims=10):
+    def __init__(self, max_features=100, embedding_dims=50, maxlen=50, filters=100, kernel_size=3, hidden_dims=250, output_dims=10, compile_loss='categorical_crossentropy'):
         self.max_features = max_features
         self.embedding_dims = embedding_dims
         self.maxlen = maxlen
@@ -109,11 +109,15 @@ class RNC_vin:
         # STANCE - loss: Representa o objetivo no qual o modelo vai tentar minimizar binary_crossentropy é indicado para a classificação de 2 classes (positivo e negativo)
         # optimizer=adam é um algoritmo para atualizar os pesos da rede iterativamente baseado nos dados do treinamento
         # metrics para qualquer problema de classificação a métrica deve ser accuracy
-        self.model.compile(loss='binary_crossentropy',optimizer='rmsprop',metrics = ['accuracy'])
+        #self.model.compile(loss='binary_crossentropy',optimizer='rmsprop',metrics = ['accuracy'])
+        self.model.compile(loss=compile_loss,optimizer='rmsprop',metrics = ['accuracy'])
         
         
-    def fit(self, X_data, Y_data, batch_size=32, epochs=10, verbose=0):
-        self.model.fit(np.array(X_data), np.array(Y_data), batch_size=batch_size, epochs=epochs, verbose=verbose)
+    def fit(self, X_data, Y_data, batch_size=32, epochs=10, verbose=0, validation_data=None):
+        if validation_data is not None:
+            self.model.fit(np.array(X_data), np.array(Y_data), batch_size=batch_size, epochs=epochs, validation_data=validation_data, verbose=verbose)
+        else:
+            self.model.fit(np.array(X_data), np.array(Y_data), batch_size=batch_size, epochs=epochs, verbose=verbose)
         
     def predict(self, X_data, batch_size=32, verbose=0):
         return self.model.predict(X_data, batch_size=batch_size, verbose=verbose)

@@ -26,10 +26,13 @@ class Milestones:
     
     def add_milestone(self, name):
         now = int(time.time() * 1000)
+        ok = False
         try:
-            temp = self.milestones[now]
-            now = now + 1
+            while not ok:
+                temp = self.milestones[now]
+                now = now + 1
         except KeyError:
+            ok = True
             pass
         self.milestones[now] = name
         print('{} @ {}: {}'.format(self.PRFH, self.build_timeview(time.localtime(now/1000.0), s_date=False), name), file=sys.stderr)
