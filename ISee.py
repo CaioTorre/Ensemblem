@@ -250,7 +250,8 @@ class Ensemble:
             total = len(self.datasets['split'][n]['test']['y'])
             for this_n in range(total - 1):
                 _correct_predict = self.datasets['split'][n]['test']['y'][this_n]
-                msg = "\t%4d - %8d " % (this_n, _correct_predict)
+                _correct_predict_strn = self.encoder.inverse_transform([_correct_predict])[0]
+                msg = "\t%4d - %10s " % (this_n, _correct_predict_strn)
                 votes = []
                 
                 for _m_key, _m_model in self.models[n].items():
@@ -259,17 +260,17 @@ class Ensemble:
                         votes.append(model_vote)
                     if model_vote == _correct_predict:
                         _correct_guesses[_m_key] += 1
-                        msg += "- %7d* " % (model_vote)
+                        msg += "- %10s* " % (self.encoder.inverse_transform([model_vote])[0])
                     else:
-                        msg += "- %7d  " % (model_vote)
+                        msg += "- %10s  " % (self.encoder.inverse_transform([model_vote])[0])
                         
                         
                 major_vote = max(votes, key=votes.count)
                 if major_vote == _correct_predict:
                     _correct_guesses['Major'] += 1
-                    msg += "- %7d* " % (major_vote)
+                    msg += "- %10s* " % (self.encoder.inverse_transform([major_vote])[0])
                 else:
-                    msg += "- %7d  " % (major_vote)
+                    msg += "- %10s  " % (self.encoder.inverse_transform([major_vote])[0])
                 
                 if verbose:
                     print(msg + self.datasets['original']['x'][self.links[n]['test'][this_n]])
