@@ -26,23 +26,24 @@ class Ensemble:
         self.tokenizer = None
         self.n_folds = n_folds
         self.skfold = KFold(n_splits = n_folds, shuffle=True, random_state=1)
-        self.raw_avg = None
-        self.weight_sum = 0
+        #self.raw_avg = None
+        #self.weight_sum = 0
         
-    def add(self, name, model, weight=None, uses_one_hot=True, uses_categorical=False, uses_argmax=False):
-        if self.raw_avg == None:
-            if weight == None:
-                self.raw_avg = True
-            else:
-                self.raw_avg = False
-        else:
-            if (self.raw_avg and weight != None):
-                raise ValueError("Ensembled configured to not use weights but received weight value!")
-            if (not self.raw_avg and weight == None):
-                raise ValueError("Ensembled configured to use weights and current weight is None!")
+    def add(self, name, model, weight=1, uses_one_hot=True, uses_categorical=False, uses_argmax=False):
+        #if self.raw_avg == None:
+        #    if weight == None:
+        #        self.raw_avg = True
+        #    else:
+        #        self.raw_avg = False
+        #else:
+        #    if (self.raw_avg and weight != None):
+        #        raise ValueError("Ensembled configured to not use weights but received weight value!")
+        #    if (not self.raw_avg and weight == None):
+        #        raise ValueError("Ensembled configured to use weights and current weight is None!")
         if name in self.models:
             raise ValueError("Ensemble already has a model named " + name)
-        self.weight_sum += weight
+        
+        #self.weight_sum += weight
         for n in range(self.n_folds):
             self.models[n][name] = {'model':model, 'model_one_hot':uses_one_hot, 'model_categorical':uses_categorical, 'model_argmax':uses_argmax, 'last_predicts':[], 'weight':weight}
         
@@ -254,7 +255,8 @@ class Ensemble:
                 
                 for _m_key, _m_model in self.models[n].items():
                     model_vote = int(_m_model['last_predicts'][this_n])
-                    votes.append(model_vote)
+                    for _ in range(_m_model['weight']):
+                        votes.append(model_vote)
                     if model_vote == _correct_predict:
                         _correct_guesses[_m_key] += 1
                         msg += "- %7d* " % (model_vote)
