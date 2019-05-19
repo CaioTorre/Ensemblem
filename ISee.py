@@ -45,7 +45,7 @@ class Ensemble:
         
         #self.weight_sum += weight
         for n in range(self.n_folds):
-            self.models[n][name] = {'model':model, 'model_one_hot':uses_one_hot, 'model_categorical':uses_categorical, 'model_argmax':uses_argmax, 'last_predicts':[], 'weight':weight}
+            self.models[n][name] = {'model':model, 'model_one_hot':uses_one_hot, 'model_categorical':uses_categorical, 'model_argmax':uses_argmax, 'last_predicts':[], 'weight':weight, 'histories':None}
         
     def set_datasets(self, x, y, indexes):
         self.datasets['original']['x'] = x
@@ -160,15 +160,25 @@ class Ensemble:
         for n in range(self.n_folds):
             print("Training with the {} set".format(self.to_ordinal(n + 1)))
             _x_one_hot = []
+            _x_one_hot_val = []
+            
             for vec in self.datasets['split'][n]['train']['x']:
                 _x_one_hot.append([0.] * max_features)
                 for _element in vec:
                     _x_one_hot[-1][_element] += 1.
             _x_one_hot = np.array(_x_one_hot)
             
+            for vec in self.datasets['split'][n]['test']['x']:
+                _x_one_hot_val.append([0.] * max_features)
+                for _element in vec:
+                    _x_one_hot_val[-1][_element] += 1.
+            _x_one_hot_val = np.array(_x_one_hot_val)
+            
             _x_orig = sequence.pad_sequences(np.array(self.datasets['split'][n]['train']['x']), maxlen=maxlen)
+            _x_orig_val = sequence.pad_sequences(np.array(self.datasets['split'][n]['test']['x']), maxlen=maxlen)
             
             _y_categorical = np_utils.to_categorical(self.datasets['split'][n]['train']['y'])
+            _y_categorical_val = np_utils.to_categorical(self.datasets['split'][n]['test']['y'])
             
             for _m_key, _m_model in self.models[n].items():
                 if profiler is not None:
@@ -178,21 +188,60 @@ class Ensemble:
                     
                 if _m_model['model_one_hot']:
                     _x = _x_one_hot
+                    _x_val = _x_one_hot_val
                 else:
                     _x = _x_orig
+                    _x_val = _x_orig_val
                     
                 if _m_model['model_categorical']:
                     _y = _y_categorical
+                    _y_val = _y_categorical_val
                 else:
                     _y = self.datasets['split'][n]['train']['y']
+                    _y_val = self.datasets['split'][n]['test']['y']
                     
-                _m_model['model'].fit(_x, _y)
+                #try:
+                _h = _m_model['model'].fit(_x, _y, validation_data=(_x_val,_y_val)).history
+                if _m_model['histories'] is None:
+                    _m_model['histories'] = {'acc':[], 'val_acc':[], 'loss':[], 'val_loss':[]}
+                _m_model['histories']['acc'].append(_h['acc'])
+                _m_model['histories']['val_acc'].append(_h['val_acc'])
+                _m_model['histories']['loss'].append(_h['loss'])
+                _m_model['histories']['val_loss'].append(_h['val_loss'])
+                #except Exception:
+                #    _m_model['model'].fit(_x, _y)
                 
-                if profiler is not None:
-                    profiler.add_milestone("Fold {} - Trained model {}".format(n + 1, _m_key))
+                #if profiler is not None:
+                #    profiler.add_milestone("Fold {} - Trained model {}".format(n + 1, _m_key))
+        
+            #for _m_key, _m_model in self.models[n].items():
+            #    if _m_model['histories'] is not None:
+            #        print("Model {} --> {}".format(_m_key, _m_model['histories']))
                 
         print("Finished training")
         
+    def evalHistories(self):
+        _hists = {}
+        for n in range(self.n_folds):
+            print("{} fold".format(self.to_ordinal(n + 1)))
+            for _m_key, _m_model in self.models[n].items():
+                print("\tModel {}".format(_m_key))
+                if _m_key not in _hists:
+                    _hists[_m_key] = {'acc':[], 'val_acc':[], 'loss':[], 'val_loss':[]}
+                for _v in _hists[_m_key]:
+                    print("\t\tMax  {0!s}: {1:.2f}%".format(_v, 100. * np.amax(_m_model['histories'][_v])))
+                    print("\t\tMean {0!s}: {1:.2f}%".format(_v, 100. * np.mean(_m_model['histories'][_v])))
+                    #if _v not in _hists[_m_key]:
+                    #    _hists[_m_key][_v] = [np.amax(_m_model['histories'][_v])]
+                    #else:
+                    _hists[_m_key][_v].append(np.amax(_m_model['histories'][_v]))
+        print("Across {} folds".format(self.n_folds))
+        for _model, _v in _hists.items():
+            print("\tModel {}".format(_model))
+            for _key, _values in _v.items():
+                print("\t\tMax      {0!s}: {1:.2f}%".format(_key, 100. * np.amax(_values))) 
+                print("\t\tMean max {0!s}: {1:.2f}%".format(_key, 100. * np.mean(_values)))
+                
     def test(self, max_features, maxlen, profiler=None):
         if profiler is not None:
             profiler.add_milestone("Starting testing")

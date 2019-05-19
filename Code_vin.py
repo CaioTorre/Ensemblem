@@ -115,9 +115,9 @@ class RNC_vin:
         
     def fit(self, X_data, Y_data, batch_size=32, epochs=10, verbose=0, validation_data=None):
         if validation_data is not None:
-            self.model.fit(np.array(X_data), np.array(Y_data), batch_size=batch_size, epochs=epochs, validation_data=validation_data, verbose=verbose)
+            return self.model.fit(np.array(X_data), np.array(Y_data), batch_size=batch_size, epochs=epochs, validation_data=validation_data, verbose=verbose)
         else:
-            self.model.fit(np.array(X_data), np.array(Y_data), batch_size=batch_size, epochs=epochs, verbose=verbose)
+            return self.model.fit(np.array(X_data), np.array(Y_data), batch_size=batch_size, epochs=epochs, verbose=verbose)
         
     def predict(self, X_data, batch_size=32, verbose=0):
         return self.model.predict(X_data, batch_size=batch_size, verbose=verbose)
