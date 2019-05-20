@@ -221,26 +221,38 @@ class Ensemble:
         print("Finished training")
         
     def evalHistories(self):
+        buffer = ""
         _hists = {}
         for n in range(self.n_folds):
+            buffer += "{} fold\n".format(self.to_ordinal(n + 1))
             print("{} fold".format(self.to_ordinal(n + 1)))
             for _m_key, _m_model in self.models[n].items():
+                buffer += "\tModel {}\n".format(_m_key)
                 print("\tModel {}".format(_m_key))
                 if _m_key not in _hists:
                     _hists[_m_key] = {'acc':[], 'val_acc':[], 'loss':[], 'val_loss':[]}
                 for _v in _hists[_m_key]:
+                    buffer += "\t\tRaw  {}: {}\n".format(_v, _m_model['histories'][_v])
+                    buffer += "\t\tMax  {0!s}: {1:.2f}%\n".format(_v, 100. * np.amax(_m_model['histories'][_v]))
+                    buffer += "\t\tMean {0!s}: {1:.2f}%\n".format(_v, 100. * np.mean(_m_model['histories'][_v]))
                     print("\t\tMax  {0!s}: {1:.2f}%".format(_v, 100. * np.amax(_m_model['histories'][_v])))
                     print("\t\tMean {0!s}: {1:.2f}%".format(_v, 100. * np.mean(_m_model['histories'][_v])))
                     #if _v not in _hists[_m_key]:
                     #    _hists[_m_key][_v] = [np.amax(_m_model['histories'][_v])]
                     #else:
                     _hists[_m_key][_v].append(np.amax(_m_model['histories'][_v]))
+        buffer += "Across {} folds\n".format(self.n_folds)
         print("Across {} folds".format(self.n_folds))
         for _model, _v in _hists.items():
+            buffer += "\tModel {}\n".format(_model)
             print("\tModel {}".format(_model))
             for _key, _values in _v.items():
+                buffer += "\t\tRaw      {}: {}\n".format(_key, _values)
+                buffer += "\t\tMax      {0!s}: {1:.2f}%\n".format(_key, 100. * np.amax(_values))
+                buffer += "\t\tMean max {0!s}: {1:.2f}%\n".format(_key, 100. * np.mean(_values))
                 print("\t\tMax      {0!s}: {1:.2f}%".format(_key, 100. * np.amax(_values))) 
                 print("\t\tMean max {0!s}: {1:.2f}%".format(_key, 100. * np.mean(_values)))
+        return buffer
                 
     def test(self, max_features, maxlen, profiler=None):
         if profiler is not None:
