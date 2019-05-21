@@ -293,10 +293,11 @@ class Ensemble:
         print("Finished testing")
         return _predicts
         
-    def evaluate(self, verbose=False, print_individual_results=True):
+    def evaluate(self, verbose=False, print_individual_results=True, file_d=None):
         _avgs = {'Ensemble':0.0}
         for n in range(self.n_folds):
             print("Evaluating {}-th fold".format(n + 1))
+            if file_d is not None: file_d.write("Evaluating {}-th fold\n".format(n + 1))
             _correct_guesses = {'Major': 0}
             for key in self.models[n]:
                 _correct_guesses[key] = 0
@@ -335,22 +336,28 @@ class Ensemble:
                 
                 if verbose:
                     print(msg + self.datasets['original']['x'][self.links[n]['test'][this_n]])
+                    if file_d is not None: file_d.write(msg + self.datasets['original']['x'][self.links[n]['test'][this_n]] + '\n')
                     
             if print_individual_results:
                 for name in self.models[n]:
                     print("\t" + name + " got {} out of {} ({}%)".format(_correct_guesses[name], total, 100. * _correct_guesses[name] / total))
+                    if file_d is not None: file_d.write("\t" + name + " got {} out of {} ({}%)\n".format(_correct_guesses[name], total, 100. * _correct_guesses[name] / total))
                     try:
                         _avgs[name] += _correct_guesses[name] / total
                     except KeyError:
                         _avgs[name] = _correct_guesses[name] / total
                 print("\tEnsemble got {} out of {} ({}%)".format(_correct_guesses['Major'], total, 100. * _correct_guesses['Major'] / total))
+                if file_d is not None: file_d.write("\tEnsemble got {} out of {} ({}%)\n".format(_correct_guesses['Major'], total, 100. * _correct_guesses['Major'] / total))
                 _avgs['Ensemble'] += _correct_guesses['Major'] / total
         
         if print_individual_results:
             print("Across {} folds, averages are:".format(self.n_folds))
+            if file_d is not None: file_d.write("Across {} folds, averages are:\n".format(self.n_folds))
             for name in self.models[0]:
                 print("\t" + name + ": %.3f%%" % (100. * _avgs[name] / self.n_folds))
+                if file_d is not None: file_d.write("\t" + name + ": %.3f%%\n" % (100. * _avgs[name] / self.n_folds))
             print("\tEnsemble: %.3f%%" % (100. * _avgs['Ensemble'] / self.n_folds))
+            if file_d is not None: file_d.write("\tEnsemble: %.3f%%\n" % (100. * _avgs['Ensemble'] / self.n_folds))
         return total, _correct_guesses
         
     def to_ordinal(self, num):

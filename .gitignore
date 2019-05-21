@@ -106,3 +106,4 @@ venv.bak/
 #result data
 *results.txt
 *data.txt
+test_data/
