@@ -371,10 +371,10 @@ class Ensemble:
             print("Across {} folds, averages are:".format(self.n_folds))
             if file_d is not None: file_d.write("Across {} folds, averages are:\n".format(self.n_folds))
             for name in self.models[0]:
-                print("\t" + name + ": %.3f%%" % (100. * _avgs[name] / _comb_total))
-                if file_d is not None: file_d.write("\t" + name + ": %.3f%%\n" % (100. * _avgs[name] / _comb_total))
-            print("\tEnsemble: %.3f%%" % (100. * _avgs['Ensemble'] / _comb_total))
-            if file_d is not None: file_d.write("\tEnsemble: %.3f%%\n" % (100. * _avgs['Ensemble'] / _comb_total))
+                print("\t{} got {} out of {} ({}%)".format(name, _avgs[name], _comb_total, 100. * _avgs[name] / _comb_total))
+                if file_d is not None: file_d.write("\t{} got {} out of {} ({}%)\n".format(name, _avgs[name], _comb_total, 100. * _avgs[name] / _comb_total))
+            print("\tEnsemble got {} out of {} ({}%)".format(_avgs['Ensemble'], _comb_total, 100. * _avgs['Ensemble'] / _comb_total))
+            if file_d is not None: file_d.write("\tEnsemble got {} out of {} ({}%)\n".format(_avgs['Ensemble'], _comb_total, 100. * _avgs['Ensemble'] / _comb_total))
         return total, _correct_guesses
         
     def to_ordinal(self, num):
